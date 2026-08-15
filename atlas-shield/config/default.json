@@ -1,0 +1,31 @@
+{
+  "dns": {
+    "host": "127.0.0.1",
+    "port": 0
+  },
+  "control": {
+    "host": "127.0.0.1",
+    "port": 0
+  },
+  "proxy": {
+    "host": "127.0.0.1",
+    "port": 0
+  },
+  "upstream": {
+    "host": "1.1.1.1",
+    "port": 53,
+    "timeoutMs": 2500
+  },
+  "blockResponseTtl": 60,
+  "maxConcurrentQueries": 1024,
+  "blocklistFiles": [
+    "blocklist.txt"
+  ],
+  "allowlistFiles": [
+    "allowlist.txt"
+  ],
+  "blocklistSources": [
+    "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+  ],
+  "blocklistOutput": "blocklist.txt"
+}

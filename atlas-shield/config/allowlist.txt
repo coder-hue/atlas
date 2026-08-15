@@ -1,0 +1,1 @@
+# One domain per line. Allowing a domain also allows its subdomains.

@@ -1,0 +1,20 @@
+{
+  "PasswordManagerEnabled": false,
+  "PasswordLeakDetectionEnabled": false,
+  "AutofillAddressEnabled": false,
+  "AutofillCreditCardEnabled": false,
+  "PaymentMethodQueryEnabled": false,
+  "SyncDisabled": true,
+  "BrowserSignin": 0,
+  "BrowserGuestModeEnabled": false,
+  "BrowserAddPersonEnabled": false,
+  "BackgroundModeEnabled": false,
+  "MetricsReportingEnabled": false,
+  "PromotionsEnabled": false,
+  "ShoppingListEnabled": false,
+  "QRCodeGeneratorEnabled": false,
+  "TranslateEnabled": false,
+  "ExtensionInstallForcelist": [
+    "hehggadaopoacecdllhhajmbjkdcmajg;https://clients2.google.com/service/update2/crx"
+  ]
+}

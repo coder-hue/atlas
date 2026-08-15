@@ -1,0 +1,4 @@
+# Seed domains used before downloading the configured public blocklist.
+doubleclick.net
+googleadservices.com
+googlesyndication.com

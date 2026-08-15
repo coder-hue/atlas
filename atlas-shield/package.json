@@ -1,0 +1,15 @@
+{
+  "name": "atlas-shield",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser-managed local DNS filtering sidecar for a Chromium-based browser",
+  "type": "module",
+  "scripts": {
+    "start": "node src/cli.js --config config/default.json",
+    "test": "node --test",
+    "update-lists": "node scripts/update-blocklists.js --config config/default.json"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

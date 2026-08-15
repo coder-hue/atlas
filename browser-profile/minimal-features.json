@@ -1,0 +1,78 @@
+{
+  "profile": "atlas-minimal",
+  "version": 1,
+  "principle": "Keep web-platform, security, extension, and recovery capabilities; remove account, commerce, convenience, promotion, and vendor-service features.",
+  "requiredBuildFlags": {
+    "enable_extensions": true,
+    "enable_extensions_core": true,
+    "enable_guest_view": true
+  },
+  "keep": [
+    "accessibility",
+    "bookmarks",
+    "browser_updates",
+    "certificate_validation",
+    "downloads",
+    "devtools",
+    "extension_installation",
+    "extension_debugger_api",
+    "extension_native_messaging",
+    "extension_runtime",
+    "extension_side_panel",
+    "extension_updates",
+    "history",
+    "media_playback",
+    "network_service",
+    "notifications",
+    "pdf_viewer",
+    "permissions",
+    "process_sandbox",
+    "safe_browsing",
+    "site_data_controls",
+    "site_isolation",
+    "tab_groups",
+    "tabs_and_windows",
+    "webauthn",
+    "web_platform",
+    "webrtc"
+  ],
+  "disableAndRemove": [
+    "address_autofill",
+    "background_browser_mode",
+    "browser_account_signin",
+    "browser_sync",
+    "cast_and_media_router",
+    "commerce_and_payments",
+    "credit_card_autofill",
+    "feedback_uploader",
+    "guest_and_multi_profile_ui",
+    "metrics_uploader",
+    "password_manager",
+    "password_leak_detection",
+    "price_tracking_and_shopping",
+    "printing_and_print_preview",
+    "promotional_surfaces",
+    "qr_code_generator",
+    "reading_list",
+    "remote_access",
+    "supervised_users",
+    "translate_ui",
+    "vendor_ai_features",
+    "web_app_installation"
+  ],
+  "retainButDoNotUpload": [
+    "local_crash_handler",
+    "local_diagnostics"
+  ],
+  "integration": {
+    "builtInComponentExtensions": [
+      "atlas_shield_ui"
+    ],
+    "requiredExternalExtensions": [
+      "hehggadaopoacecdllhhajmbjkdcmajg"
+    ],
+    "nativeChildren": [
+      "atlas_shield"
+    ]
+  }
+}
