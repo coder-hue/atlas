@@ -1,0 +1,19 @@
+.DS_Store
+*.log
+node_modules/
+
+# Local ChatGPT project metadata and synced references.
+AGENTS.md
+sources/
+
+# The Chromium checkout and build products are recreated by the scripts.
+chromium-build/
+
+# Rejected stock-Chrome test wrapper and private runtime profile.
+Atlas Browser Dev.app/
+atlas-browser-dev/
+.atlas-profile/
+
+# Generated from the configured public list source.
+atlas-shield/config/blocklist.txt
+browser-profile/extensions/atlas-shield/rules.json
