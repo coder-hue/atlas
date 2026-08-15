@@ -1,0 +1,36 @@
+{
+  "name": "ChatGPT",
+  "extensionId": "hehggadaopoacecdllhhajmbjkdcmajg",
+  "publisher": "OpenAI",
+  "webStoreUrl": "https://chromewebstore.google.com/detail/chatgpt/hehggadaopoacecdllhhajmbjkdcmajg",
+  "updateUrl": "https://clients2.google.com/service/update2/crx",
+  "distribution": {
+    "source": "chrome_web_store",
+    "installMode": "force_installed",
+    "preservePublisherSignature": true,
+    "bundleCrx": false,
+    "modifyExtension": false,
+    "replaceWithAtlasClient": false
+  },
+  "requiredBrowserCapabilities": [
+    "bookmarks",
+    "downloads",
+    "extension_debugger_api",
+    "extension_native_messaging",
+    "extension_side_panel",
+    "history",
+    "notifications",
+    "tab_groups",
+    "tabs_and_windows"
+  ],
+  "desktopDependency": "ChatGPT desktop app",
+  "compatibility": {
+    "officiallySupportedBrowser": "Google Chrome",
+    "chromiumForksOfficiallySupported": false,
+    "statusForAtlas": "install_and_use"
+  },
+  "listingObserved": {
+    "version": "1.2.27259.19709",
+    "date": "2026-08-15"
+  }
+}

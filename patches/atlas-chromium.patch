@@ -1,0 +1,723 @@
+diff --git a/chrome/BUILD.gn b/chrome/BUILD.gn
+index d40d42bdac..5f4e87b63d 100644
+--- a/chrome/BUILD.gn
++++ b/chrome/BUILD.gn
+@@ -1158,14 +1158,16 @@ if (is_win) {
+     }
+   }
+ 
+-  # Add the SwiftShader .dylibs in the MODULE_DIR of Chromium.app
+-  bundle_data("swiftshader_binaries") {
+-    sources = [
+-      "$root_out_dir/vk_intermediates/libvk_swiftshader.dylib",
+-      "$root_out_dir/vk_intermediates/vk_swiftshader_icd.json",
+-    ]
+-    outputs = [ "{{bundle_contents_dir}}/Libraries/{{source_file_part}}" ]
+-    public_deps = [ "//ui/gl:swiftshader_vk_library_copy" ]
++  # Add the SwiftShader .dylibs only when the software renderer is enabled.
++  if (enable_swiftshader) {
++    bundle_data("swiftshader_binaries") {
++      sources = [
++        "$root_out_dir/vk_intermediates/libvk_swiftshader.dylib",
++        "$root_out_dir/vk_intermediates/vk_swiftshader_icd.json",
++      ]
++      outputs = [ "{{bundle_contents_dir}}/Libraries/{{source_file_part}}" ]
++      public_deps = [ "//ui/gl:swiftshader_vk_library_copy" ]
++    }
+   }
+ 
+   bundle_data("vulkan_loader_binaries") {
+@@ -1386,7 +1388,6 @@ if (is_win) {
+       ":chrome_framework_helpers",
+       ":chrome_framework_resources",
+       ":optimization_guide_library",
+-      ":swiftshader_binaries",
+       ":widevine_cdm_library",
+       "//chrome/browser/lens/sapisid:sapisid_bundle_data",
+       "//chrome/browser/resources/media/mei_preload:component_bundle",
+@@ -1394,6 +1395,10 @@ if (is_win) {
+       "//components/privacy_sandbox/privacy_sandbox_attestations/preload:component_bundle",
+     ]
+ 
++    if (enable_swiftshader) {
++      bundle_deps += [ ":swiftshader_binaries" ]
++    }
++
+     if (is_chrome_branded) {
+       bundle_deps += [ ":chromecompaneros_bundle_data" ]
+     }
+diff --git a/chrome/app/theme/chromium/BRANDING b/chrome/app/theme/chromium/BRANDING
+index f8363d5b29..1df83d15d4 100644
+--- a/chrome/app/theme/chromium/BRANDING
++++ b/chrome/app/theme/chromium/BRANDING
+@@ -1,10 +1,10 @@
+-COMPANY_FULLNAME=The Chromium Authors
+-COMPANY_SHORTNAME=The Chromium Authors
+-PRODUCT_FULLNAME=Chromium
+-PRODUCT_SHORTNAME=Chromium
+-PRODUCT_INSTALLER_FULLNAME=Chromium Installer
+-PRODUCT_INSTALLER_SHORTNAME=Chromium Installer
+-COPYRIGHT=Copyright @LASTCHANGE_YEAR@ The Chromium Authors. All rights reserved.
+-MAC_BUNDLE_ID=org.chromium.Chromium
+-MAC_CREATOR_CODE=Cr24
++COMPANY_FULLNAME=Atlas Browser
++COMPANY_SHORTNAME=Atlas
++PRODUCT_FULLNAME=Atlas Browser
++PRODUCT_SHORTNAME=Atlas
++PRODUCT_INSTALLER_FULLNAME=Atlas Browser Installer
++PRODUCT_INSTALLER_SHORTNAME=Atlas Installer
++COPYRIGHT=Copyright @LASTCHANGE_YEAR@ Atlas Browser. Chromium is used under its open-source licenses.
++MAC_BUNDLE_ID=com.atlas.browser
++MAC_CREATOR_CODE=Atls
+ MAC_TEAM_ID=
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+index afa2ca47d4..d839ed34f5 100644
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -4830,7 +4830,6 @@ if (!is_android) {
+       "//chrome/browser/enterprise/connectors/test:test_support",
+       "//chrome/browser/glic/test_support",
+       "//chrome/browser/login_detection",
+-      "//chrome/browser/pdf:pdf_extension_test_utils",
+       "//chrome/browser/policy:test_support",
+       "//chrome/browser/prefs:util",
+       "//chrome/browser/search_engines",
+@@ -4854,6 +4853,10 @@ if (!is_android) {
+       "//ui/shell_dialogs:test_support",
+     ]
+ 
++    if (enable_pdf) {
++      deps += [ "//chrome/browser/pdf:pdf_extension_test_utils" ]
++    }
++
+     if (is_win || is_linux || is_chromeos) {
+       sources += [ "process_singleton_browsertest.cc" ]
+     }
+diff --git a/chrome/browser/extensions/BUILD.gn b/chrome/browser/extensions/BUILD.gn
+index c7fe244165..76867676d6 100644
+--- a/chrome/browser/extensions/BUILD.gn
++++ b/chrome/browser/extensions/BUILD.gn
+@@ -3073,11 +3073,9 @@ source_set("browser_tests") {
+       "//chrome/browser/extensions/api/messaging:test_support",
+       "//chrome/browser/extensions/api/mime_handlers:browser_tests",
+       "//chrome/browser/extensions/api/passwords_private:test_support",
+-      "//chrome/browser/extensions/api/pdf_viewer_private:browser_tests",
+       "//chrome/browser/hid",
+       "//chrome/browser/password_manager",
+       "//chrome/browser/password_manager:test_support",
+-      "//chrome/browser/pdf:pdf_extension_test_utils",
+       "//chrome/browser/prefetch",
+       "//chrome/browser/sync_file_system",
+       "//chrome/browser/tab_list",
+@@ -3159,6 +3157,13 @@ source_set("browser_tests") {
+       "//ui/web_dialogs:test_support",
+     ]
+ 
++    if (enable_pdf) {
++      deps += [
++        "//chrome/browser/extensions/api/pdf_viewer_private:browser_tests",
++        "//chrome/browser/pdf:pdf_extension_test_utils",
++      ]
++    }
++
+     if (!is_chromeos) {
+       # Chrome OS doesn't use background mode or download bubbles.
+       deps += [
+diff --git a/chrome/browser/guest_view/BUILD.gn b/chrome/browser/guest_view/BUILD.gn
+index 603e5d7bc1..36b7568ffb 100644
+--- a/chrome/browser/guest_view/BUILD.gn
++++ b/chrome/browser/guest_view/BUILD.gn
+@@ -5,6 +5,7 @@
+ import("//components/captive_portal/core/features.gni")
+ import("//components/guest_view/buildflags/buildflags.gni")
+ import("//extensions/buildflags/buildflags.gni")
++import("//printing/buildflags/buildflags.gni")
+ 
+ assert(enable_guest_view)
+ 
+@@ -110,10 +111,8 @@ if (!is_android && enable_extensions) {
+ 
+     deps = [
+       "//chrome/browser/extensions:test_support",
+-      "//chrome/browser/printing:test_support",
+       "//chrome/browser/profiles:profile",
+       "//chrome/browser/ui",
+-      "//chrome/browser/ui/webui/print_preview",
+       "//chrome/test:test_support",
+       "//chrome/test:test_support_ui",
+       "//components/guest_view/browser",
+@@ -129,6 +128,13 @@ if (!is_android && enable_extensions) {
+       "//net:test_support",
+       "//testing/gtest",
+     ]
++
++    if (enable_print_preview) {
++      deps += [
++        "//chrome/browser/printing:test_support",
++        "//chrome/browser/ui/webui/print_preview",
++      ]
++    }
+   }
+ 
+   source_set("interactive_ui_tests") {
+diff --git a/chrome/browser/renderer_context_menu/BUILD.gn b/chrome/browser/renderer_context_menu/BUILD.gn
+index db3ab9dae7..b9905bf790 100644
+--- a/chrome/browser/renderer_context_menu/BUILD.gn
++++ b/chrome/browser/renderer_context_menu/BUILD.gn
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import("//components/spellcheck/spellcheck_build_features.gni")
++import("//components/compose/features.gni")
+ import("//extensions/buildflags/buildflags.gni")
+ import("//pdf/features.gni")
+ import("//printing/buildflags/buildflags.gni")
+@@ -119,7 +120,6 @@ source_set("impl") {
+       "//chrome/browser/apps/app_service",
+       "//chrome/browser/apps/platform_apps",
+       "//chrome/browser/autocomplete",
+-      "//chrome/browser/compose",
+       "//chrome/browser/context_hub",
+       "//chrome/browser/custom_handlers",
+       "//chrome/browser/devtools",
+@@ -132,7 +132,6 @@ source_set("impl") {
+       "//chrome/browser/lens/region_search",
+       "//chrome/browser/media/router:media_router_feature",
+       "//chrome/browser/password_manager",
+-      "//chrome/browser/pdf",
+       "//chrome/browser/predictors",
+       "//chrome/browser/prefs",
+       "//chrome/browser/preloading:prefs",
+@@ -164,8 +163,6 @@ source_set("impl") {
+       "//chrome/browser/ui/webui/history",
+       "//chrome/browser/user_education",
+       "//chrome/common:mojo_bindings",
+-      "//components/compose/core/browser",
+-      "//components/compose/core/browser:features",
+       "//components/guest_view/browser",
+       "//components/live_caption:constants",
+       "//components/live_caption:utils",
+@@ -190,6 +187,18 @@ source_set("impl") {
+     if (enable_print_preview) {
+       deps += [ "//chrome/browser/printing" ]
+     }
++
++    if (enable_pdf) {
++      deps += [ "//chrome/browser/pdf" ]
++    }
++
++    if (enable_compose) {
++      deps += [
++        "//chrome/browser/compose",
++        "//components/compose/core/browser",
++        "//components/compose/core/browser:features",
++      ]
++    }
+   }
+ 
+   if (is_chromeos) {
+@@ -272,7 +281,9 @@ static_library("test_support") {
+       "render_view_context_menu_test_util.cc",
+     ]
+     public_deps += [ "//extensions/buildflags" ]
+-    deps += [ "//chrome/browser/compose" ]
++    if (enable_compose) {
++      deps += [ "//chrome/browser/compose" ]
++    }
+   }
+ 
+   if (is_chromeos) {
+@@ -375,11 +386,9 @@ if (!is_android) {
+       ":test_support",
+       "//base/test:test_support",
+       "//chrome/browser",
+-      "//chrome/browser/compose:test_support",
+       "//chrome/browser/context_hub",
+       "//chrome/browser/devtools",
+       "//chrome/browser/enterprise/data_controls:test_support",
+-      "//chrome/browser/pdf:pdf_extension_test_utils",
+       "//chrome/browser/profiles:misc",
+       "//chrome/browser/search_engines",
+       "//chrome/browser/send_tab_to_self",
+@@ -424,7 +433,14 @@ if (!is_android) {
+     }
+ 
+     if (enable_pdf) {
+-      deps += [ "//chrome/browser/pdf:pdf_extension_test_base" ]
++      deps += [
++        "//chrome/browser/pdf:pdf_extension_test_base",
++        "//chrome/browser/pdf:pdf_extension_test_utils",
++      ]
++    }
++
++    if (enable_compose) {
++      deps += [ "//chrome/browser/compose:test_support" ]
+     }
+   }
+ 
+diff --git a/chrome/browser/resources/settings/settings_menu/settings_menu.html b/chrome/browser/resources/settings/settings_menu/settings_menu.html
+index efde1c73df..8fbf8989f6 100644
+--- a/chrome/browser/resources/settings/settings_menu/settings_menu.html
++++ b/chrome/browser/resources/settings/settings_menu/settings_menu.html
+@@ -45,26 +45,6 @@
+       <cr-menu-selector id="menu" selectable="a:not(#extensionsLink)"
+           attr-for-selected="href" on-iron-activate="onSelectorActivate_"
+           on-click="onLinkClick_" selected-attribute="selected">
+-        <a role="menuitem"
+-            id="people" href="/people" hidden="[[!pageVisibility_.people]]"
+-            class="cr-nav-menu-item">
+-<if expr="not _google_chrome">
+-          <cr-icon icon="settings:person"></cr-icon>
+-</if>
+-<if expr="_google_chrome">
+-          <cr-icon icon="settings-internal:google-g"></cr-icon>
+-</if>
+-          $i18n{peoplePageTitle}
+-          <cr-ripple></cr-ripple>
+-        </a>
+-        <a role="menuitem" id="autofill" href="/autofill"
+-            on-click="onAutofillClick_"
+-            class="cr-nav-menu-item"
+-            hidden="[[!pageVisibility_.yourSavedInfo]]">
+-          <cr-icon icon="settings:password-manager"></cr-icon>
+-          $i18n{autofillPageTitle}
+-          <cr-ripple></cr-ripple>
+-        </a>
+         <a role="menuitem" id="privacy" href="/privacy"
+             hidden="[[!pageVisibility_.privacy]]"
+             class="cr-nav-menu-item">
+@@ -72,20 +52,6 @@
+           $i18n{privacyPageTitle}
+           <cr-ripple></cr-ripple>
+         </a>
+-        <a role="menuitem" id="performance" href="/performance"
+-            class="cr-nav-menu-item"
+-            hidden="[[!pageVisibility_.performance]]">
+-          <cr-icon icon="settings:speed"></cr-icon>
+-          $i18n{performancePageTitle}
+-          <cr-ripple></cr-ripple>
+-        </a>
+-        <a role="menuitem" id="ai" href="/ai"
+-            hidden="[[!showAiPageMenuItem_(showAiPage_, pageVisibility_.ai)]]"
+-            class="cr-nav-menu-item">
+-          <cr-icon icon="settings20:button-magic"></cr-icon>
+-          $i18n{aiPageTitle}
+-          <cr-ripple></cr-ripple>
+-        </a>
+         <a role="menuitem" id="appearance" href="/appearance"
+             hidden="[[!pageVisibility_.appearance]]"
+             class="cr-nav-menu-item">
+@@ -98,30 +64,7 @@
+           $i18n{searchPageTitle}
+           <cr-ripple></cr-ripple>
+         </a>
+-<if expr="not is_chromeos">
+-        <a role="menuitem" id="defaultBrowser" class="cr-nav-menu-item"
+-          href="/defaultBrowser"
+-          hidden="[[!pageVisibility_.defaultBrowser]]">
+-          <cr-icon icon="settings:web-asset"></cr-icon>
+-          $i18n{defaultBrowser}
+-          <cr-ripple></cr-ripple>
+-        </a>
+-</if>
+-        <a role="menuitem" id="onStartup" href="/onStartup"
+-            class="cr-nav-menu-item"
+-            hidden="[[!pageVisibility_.onStartup]]">
+-          <cr-icon icon="settings:power-settings-new"></cr-icon>
+-          $i18n{onStartup}
+-          <cr-ripple></cr-ripple>
+-        </a>
+         <div class="menu-separator"></div>
+-        <a role="menuitem" id="languages" href="/languages"
+-            class="cr-nav-menu-item"
+-            hidden="[[!pageVisibility_.languages]]">
+-          <cr-icon icon="settings:translate"></cr-icon>
+-          $i18n{languagesPageTitle}
+-          <cr-ripple></cr-ripple>
+-        </a>
+         <a role="menuitem" id="downloads" href="/downloads"
+             class="cr-nav-menu-item"
+             hidden="[[!pageVisibility_.downloads]]">
+@@ -129,27 +72,6 @@
+           $i18n{downloadsPageTitle}
+           <cr-ripple></cr-ripple>
+         </a>
+-        <a role="menuitem" id="accessibility" href="/accessibility"
+-            class="cr-nav-menu-item"
+-            hidden="[[!pageVisibility_.a11y]]">
+-          <cr-icon icon="settings:accessibility"></cr-icon>
+-          $i18n{a11yPageTitle}
+-          <cr-ripple></cr-ripple>
+-        </a>
+-<if expr="not is_chromeos">
+-        <a role="menuitem" id="system" href="/system" class="cr-nav-menu-item"
+-            hidden="[[!pageVisibility_.system]]">
+-          <cr-icon icon="settings:build"></cr-icon>
+-          $i18n{systemPageTitle}
+-          <cr-ripple></cr-ripple>
+-        </a>
+-</if>
+-        <a role="menuitem" id="reset" href="/reset"
+-            hidden="[[!pageVisibility_.reset]]" class="cr-nav-menu-item">
+-          <cr-icon icon="settings:restart-alt"></cr-icon>
+-          $i18n{resetPageTitle}
+-          <cr-ripple></cr-ripple>
+-        </a>
+         <div hidden="[[hideBottomMenuSeparator_(pageVisibility_)]]"
+             class="menu-separator"></div>
+         <a role="menuitem" id="extensionsLink" class="cr-nav-menu-item"
+diff --git a/chrome/browser/ui/toolbar/app_menu_model.cc b/chrome/browser/ui/toolbar/app_menu_model.cc
+index 4dfdb26dbd..477ce69062 100644
+--- a/chrome/browser/ui/toolbar/app_menu_model.cc
++++ b/chrome/browser/ui/toolbar/app_menu_model.cc
+@@ -226,6 +226,8 @@ DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(HelpMenuModel, kReportUnsafeSiteMenuItem);
+ 
+ namespace {
+ 
++constexpr bool kAtlasMinimalMenu = true;
++
+ ////////////////////////////////////////////////////////////////////////////////
+ // AddItemWithStringIdAndVectorIcon
+ void AddItemWithStringIdAndVectorIcon(ui::SimpleMenuModel* model,
+@@ -2193,7 +2195,7 @@ void AppMenuModel::Build() {
+   // Build (and, by extension, Init) should only be called once.
+   DCHECK_EQ(0u, GetItemCount());
+ 
+-  if (app_menu_icon_controller_ &&
++  if (!kAtlasMinimalMenu && app_menu_icon_controller_ &&
+       app_menu_icon_controller_->GetTypeAndSeverity().type ==
+           AppMenuIconController::IconType::kUpgradeNotification) {
+     AddSeparator(ui::SPACING_SEPARATOR);
+@@ -2209,8 +2211,9 @@ void AppMenuModel::Build() {
+     }
+   }
+ 
+-  if (AddSafetyHubMenuItem() || AddGlobalErrorMenuItems() ||
+-      AddDefaultBrowserMenuItems()) {
++  if (!kAtlasMinimalMenu &&
++      (AddSafetyHubMenuItem() || AddGlobalErrorMenuItems() ||
++       AddDefaultBrowserMenuItems())) {
+     AddSeparator(ui::NORMAL_SEPARATOR);
+   }
+ 
+@@ -2253,23 +2256,27 @@ void AppMenuModel::Build() {
+   AddSeparator(ui::NORMAL_SEPARATOR);
+ 
+ #if !BUILDFLAG(IS_CHROMEOS)
+-  sub_menus_.push_back(std::make_unique<ProfileSubMenuModel>(
+-      this, browser()->GetProfile(),
+-      BrowserWindow::FromBrowser(browser())->GetColorProvider()));
+-  auto* const profile_submenu_model =
+-      static_cast<ProfileSubMenuModel*>(sub_menus_.back().get());
+-  AddSubMenu(kProfileMenuPlaceholder, profile_submenu_model->profile_name(),
+-             profile_submenu_model);
+-  SetIconForCommandId(kProfileMenuPlaceholder,
+-                      profile_submenu_model->avatar_image_model());
+-  SetElementIdentifierAt(GetIndexOfCommandId(kProfileMenuPlaceholder).value(),
+-                         kProfileMenuItem);
+-  SetAccessibleNameAt(GetIndexOfCommandId(kProfileMenuPlaceholder).value(),
+-                      profile_submenu_model->accessible_name());
+-  AddSeparator(ui::SPACING_SEPARATOR);
++  if constexpr (!kAtlasMinimalMenu) {
++    sub_menus_.push_back(std::make_unique<ProfileSubMenuModel>(
++        this, browser()->GetProfile(),
++        BrowserWindow::FromBrowser(browser())->GetColorProvider()));
++    auto* const profile_submenu_model =
++        static_cast<ProfileSubMenuModel*>(sub_menus_.back().get());
++    AddSubMenu(kProfileMenuPlaceholder, profile_submenu_model->profile_name(),
++               profile_submenu_model);
++    SetIconForCommandId(kProfileMenuPlaceholder,
++                        profile_submenu_model->avatar_image_model());
++    SetElementIdentifierAt(
++        GetIndexOfCommandId(kProfileMenuPlaceholder).value(),
++        kProfileMenuItem);
++    SetAccessibleNameAt(
++        GetIndexOfCommandId(kProfileMenuPlaceholder).value(),
++        profile_submenu_model->accessible_name());
++    AddSeparator(ui::SPACING_SEPARATOR);
++  }
+ #endif
+ 
+-  if (!browser_->GetProfile()->IsGuestSession()) {
++  if (!kAtlasMinimalMenu && !browser_->GetProfile()->IsGuestSession()) {
+     sub_menus_.push_back(
+         std::make_unique<PasswordsAndAutofillSubMenuModel>(this));
+     AddSubMenuWithStringIdAndVectorIcon(
+@@ -2316,7 +2323,7 @@ void AppMenuModel::Build() {
+         kBookmarksMenuItem);
+   }
+ 
+-  if (browser_->GetProfile()->IsRegularProfile()) {
++  if (!kAtlasMinimalMenu && browser_->GetProfile()->IsRegularProfile()) {
+     auto saved_tab_groups_model = std::make_unique<ui::SimpleMenuModel>(this);
+     sub_menus_.push_back(std::move(saved_tab_groups_model));
+     AddSubMenuWithStringIdAndVectorIcon(
+@@ -2353,22 +2360,28 @@ void AppMenuModel::Build() {
+         kExtensionsMenuItem);
+   }
+ 
+-  AddItemWithStringIdAndVectorIcon(
+-      this, IDC_CLEAR_BROWSING_DATA, IDS_CLEAR_BROWSING_DATA,
+-      features::IsRoundedIconsEnabled() ? kDeleteIcon
+-                                        : kTrashCanRefreshOldIcon);
+-  SetElementIdentifierAt(GetIndexOfCommandId(IDC_CLEAR_BROWSING_DATA).value(),
+-                         kClearBrowsingDataMenuItem);
++  if constexpr (!kAtlasMinimalMenu) {
++    AddItemWithStringIdAndVectorIcon(
++        this, IDC_CLEAR_BROWSING_DATA, IDS_CLEAR_BROWSING_DATA,
++        features::IsRoundedIconsEnabled() ? kDeleteIcon
++                                          : kTrashCanRefreshOldIcon);
++    SetElementIdentifierAt(
++        GetIndexOfCommandId(IDC_CLEAR_BROWSING_DATA).value(),
++        kClearBrowsingDataMenuItem);
++  }
+ 
+   AddSeparator(ui::NORMAL_SEPARATOR);
+   CreateZoomMenu();
+   AddSeparator(ui::NORMAL_SEPARATOR);
+ 
+-  AddItemWithStringIdAndVectorIcon(
+-      this, IDC_PRINT, IDS_PRINT,
+-      features::IsRoundedIconsEnabled() ? kPrintIcon : kPrintMenuOldIcon);
++  if constexpr (!kAtlasMinimalMenu) {
++    AddItemWithStringIdAndVectorIcon(
++        this, IDC_PRINT, IDS_PRINT,
++        features::IsRoundedIconsEnabled() ? kPrintIcon : kPrintMenuOldIcon);
++  }
+ 
+-  if (glic::GlicEnabling::IsEnabledForProfile(browser_->GetProfile())) {
++  if (!kAtlasMinimalMenu &&
++      glic::GlicEnabling::IsEnabledForProfile(browser_->GetProfile())) {
+     AddItemWithStringIdAndVectorIcon(this, IDC_OPEN_GLIC,
+                                      IDS_GLIC_THREE_DOT_MENU_ITEM,
+                                      glic::GlicVectorIconManager::GetVectorIcon(
+@@ -2380,7 +2393,7 @@ void AppMenuModel::Build() {
+   }
+ 
+   if (auto* controller = lens::LensOverlayEntryPointController::From(browser());
+-      controller && controller->IsEnabled()) {
++      !kAtlasMinimalMenu && controller && controller->IsEnabled()) {
+     const gfx::VectorIcon& icon =
+ #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+         vector_icons::kGoogleLensMonochromeLogoIcon;
+@@ -2401,23 +2414,28 @@ void AppMenuModel::Build() {
+             lens::features::kLensOverlay));
+   }
+ 
+-  AddItemWithStringIdAndVectorIcon(this, IDC_SHOW_TRANSLATE, IDS_SHOW_TRANSLATE,
+-                                   vector_icons::kGTranslateIcon);
++  if constexpr (!kAtlasMinimalMenu) {
++    AddItemWithStringIdAndVectorIcon(
++        this, IDC_SHOW_TRANSLATE, IDS_SHOW_TRANSLATE,
++        vector_icons::kGTranslateIcon);
++  }
+ 
+   CreateFindAndEditSubMenu();
+ 
+-  sub_menus_.push_back(
+-      std::make_unique<SaveAndShareSubMenuModel>(this, browser_));
+-  int string_id = media_router::MediaRouterEnabled(browser()->GetProfile())
+-                      ? IDS_CAST_SAVE_AND_SHARE_MENU
+-                      : IDS_SAVE_AND_SHARE_MENU;
+-  AddSubMenuWithStringIdAndVectorIcon(
+-      this, kSaveAndShareMenuPlaceholder, string_id, sub_menus_.back().get(),
+-      features::IsRoundedIconsEnabled() ? kFileSaveIcon
+-                                        : kFileSaveChromeRefreshOldIcon);
+-  SetElementIdentifierAt(
+-      GetIndexOfCommandId(kSaveAndShareMenuPlaceholder).value(),
+-      kSaveAndShareMenuItem);
++  if constexpr (!kAtlasMinimalMenu) {
++    sub_menus_.push_back(
++        std::make_unique<SaveAndShareSubMenuModel>(this, browser_));
++    int string_id = media_router::MediaRouterEnabled(browser()->GetProfile())
++                        ? IDS_CAST_SAVE_AND_SHARE_MENU
++                        : IDS_SAVE_AND_SHARE_MENU;
++    AddSubMenuWithStringIdAndVectorIcon(
++        this, kSaveAndShareMenuPlaceholder, string_id, sub_menus_.back().get(),
++        features::IsRoundedIconsEnabled() ? kFileSaveIcon
++                                          : kFileSaveChromeRefreshOldIcon);
++    SetElementIdentifierAt(
++        GetIndexOfCommandId(kSaveAndShareMenuPlaceholder).value(),
++        kSaveAndShareMenuItem);
++  }
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+   // Always show this option if we're in tablet mode on Chrome OS.
+@@ -2434,19 +2452,23 @@ void AppMenuModel::Build() {
+   }
+ #endif
+ 
+-  sub_menus_.push_back(std::make_unique<ToolsMenuModel>(this, browser_));
+-  AddSubMenuWithStringIdAndVectorIcon(
+-      this, kMoreToolsMenuPlaceholder, IDS_MORE_TOOLS_MENU,
+-      sub_menus_.back().get(),
+-      features::IsRoundedIconsEnabled() ? kHomeRepairServiceIcon
+-                                        : kMoreToolsMenuOldIcon);
+-  SetElementIdentifierAt(GetIndexOfCommandId(kMoreToolsMenuPlaceholder).value(),
+-                         kMoreToolsMenuItem);
++  if constexpr (!kAtlasMinimalMenu) {
++    sub_menus_.push_back(std::make_unique<ToolsMenuModel>(this, browser_));
++    AddSubMenuWithStringIdAndVectorIcon(
++        this, kMoreToolsMenuPlaceholder, IDS_MORE_TOOLS_MENU,
++        sub_menus_.back().get(),
++        features::IsRoundedIconsEnabled() ? kHomeRepairServiceIcon
++                                          : kMoreToolsMenuOldIcon);
++    SetElementIdentifierAt(
++        GetIndexOfCommandId(kMoreToolsMenuPlaceholder).value(),
++        kMoreToolsMenuItem);
++  }
+ 
+   AddSeparator(ui::NORMAL_SEPARATOR);
+-// The help submenu is only displayed on official Chrome builds. As the
+-// 'About' item has been moved to this submenu, it's reinstated here for
+-// Chromium builds.
++  if constexpr (!kAtlasMinimalMenu) {
++    // The help submenu is only displayed on official Chrome builds. As the
++    // 'About' item has been moved to this submenu, it's reinstated here for
++    // Chromium builds.
+ #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+   sub_menus_.push_back(std::make_unique<HelpMenuModel>(this, browser_));
+   AddSubMenuWithStringIdAndVectorIcon(
+@@ -2464,6 +2486,7 @@ void AppMenuModel::Build() {
+                                        : vector_icons::kInfoRefreshOldIcon);
+ #endif
+ #endif
++  }
+ 
+   AddItemWithStringIdAndVectorIcon(
+       this, IDC_OPTIONS, IDS_SETTINGS,
+diff --git a/chrome/test/BUILD.gn b/chrome/test/BUILD.gn
+index 0ee8a31ead..358aa96d4a 100644
+--- a/chrome/test/BUILD.gn
++++ b/chrome/test/BUILD.gn
+@@ -6743,7 +6743,6 @@ test("unit_tests") {
+       "//chrome/browser/webauthn/proto",
+       "//chrome/common/read_anything:mojo_bindings",
+       "//chrome/services/readaloud:unit_tests",
+-      "//chrome/services/speech:unit_tests",
+       "//components/app_constants",
+       "//components/application_locale_storage",
+       "//components/color",
+@@ -6817,6 +6816,10 @@ test("unit_tests") {
+       "//ui/webui/tracked_element:unit_tests",
+     ]
+ 
++    if (enable_speech_service) {
++      deps += [ "//chrome/services/speech:unit_tests" ]
++    }
++
+     data += [ "//chromeos/ash/experiences/arc/test/data/icons/" ]
+ 
+     if (include_js2gtest_tests && is_chromeos) {
+@@ -8818,9 +8821,14 @@ if (!is_android && !is_chromeos_device) {
+       "//chrome/browser/ui/views/location_bar:interactive_ui_tests",
+       "//chrome/browser/ui/views/location_bar/cookie_controls:interactive_ui_tests",
+       "//chrome/browser/ui/views/tabs/groups:interactive_ui_tests",
+-      "//chrome/browser/ui/webui/print_preview:interactive_ui_tests",
+     ]
+ 
++    if (enable_print_preview) {
++      deps += [
++        "//chrome/browser/ui/webui/print_preview:interactive_ui_tests",
++      ]
++    }
++
+     if (!is_chrome_for_testing) {
+       deps += [
+         "//chrome/browser/search_engine_choice",
+@@ -9414,10 +9422,11 @@ if (!is_android && !is_chromeos_device) {
+ 
+     sources += [ "../browser/media/router/discovery/access_code/access_code_cast_sink_service_browsertest.cc" ]
+ 
+-    deps += [
+-      "//components/on_device_translation:public",
+-      "//components/soda",
+-    ]
++    deps += [ "//components/soda" ]
++
++    if (enable_on_device_translation) {
++      deps += [ "//components/on_device_translation:public" ]
++    }
+ 
+     if (safe_browsing_mode == 1) {
+       sources += [ "../browser/safe_browsing/safe_browsing_navigation_observer_interactive_test.cc" ]
+diff --git a/components/autofill/core/common/autofill_prefs.cc b/components/autofill/core/common/autofill_prefs.cc
+index fe789fca94..2c5b65959b 100644
+--- a/components/autofill/core/common/autofill_prefs.cc
++++ b/components/autofill/core/common/autofill_prefs.cc
+@@ -42,7 +42,7 @@ constexpr char kAutofillAiSyncedOptInStatusDeprecated[] =
+ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+   // Synced prefs. Used for cross-device choices, e.g., credit card Autofill.
+   registry->RegisterBooleanPref(
+-      kAutofillProfileEnabled, true,
++      kAutofillProfileEnabled, false,
+       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
+   registry->RegisterIntegerPref(
+       kAutofillLastVersionDeduped, 0,
+@@ -73,7 +73,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
+       kAutofillHasSeenIban, false,
+       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
+   registry->RegisterBooleanPref(
+-      kAutofillCreditCardEnabled, true,
++      kAutofillCreditCardEnabled, false,
+       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
+   registry->RegisterBooleanPref(
+       kAutofillPaymentCvcStorage, true,
+diff --git a/components/password_manager/core/browser/password_manager.cc b/components/password_manager/core/browser/password_manager.cc
+index 7059c30be8..d12dfc2b66 100644
+--- a/components/password_manager/core/browser/password_manager.cc
++++ b/components/password_manager/core/browser/password_manager.cc
+@@ -539,10 +539,10 @@ PasswordForm CreateFormForLeakCheck(const PasswordForm& pending_credentials,
+ void PasswordManager::RegisterProfilePrefs(
+     user_prefs::PrefRegistrySyncable* registry) {
+   registry->RegisterBooleanPref(
+-      prefs::kCredentialsEnableService, true,
++      prefs::kCredentialsEnableService, false,
+       user_prefs::PrefRegistrySyncable::SYNCABLE_PRIORITY_PREF);
+   registry->RegisterBooleanPref(
+-      prefs::kCredentialsEnableAutosignin, true,
++      prefs::kCredentialsEnableAutosignin, false,
+       user_prefs::PrefRegistrySyncable::SYNCABLE_PRIORITY_PREF);
+   registry->RegisterBooleanPref(
+       prefs::kWasAutoSignInFirstRunExperienceShown, false,
+diff --git a/content/shell/BUILD.gn b/content/shell/BUILD.gn
+index 52c40fb965..c5d8389062 100644
+--- a/content/shell/BUILD.gn
++++ b/content/shell/BUILD.gn
+@@ -931,8 +931,10 @@ if (is_mac) {
+     bundle_deps = [
+       ":content_shell_framework_helpers",
+       ":content_shell_framework_resources",
+-      ":content_shell_swiftshader_binaries",
+     ]
++    if (enable_swiftshader) {
++      bundle_deps += [ ":content_shell_swiftshader_binaries" ]
++    }
+     bundle_deps += [ ":content_shell_vulkan_binaries" ]
+ 
+     if (!is_component_build) {
+@@ -1066,14 +1068,16 @@ if (is_mac) {
+     }
+   }
+ 
+-  # Add the SwiftShader .dylibs in the Libraries directory of the Framework.
+-  bundle_data("content_shell_swiftshader_binaries") {
+-    sources = [
+-      "$root_out_dir/vk_intermediates/libvk_swiftshader.dylib",
+-      "$root_out_dir/vk_intermediates/vk_swiftshader_icd.json",
+-    ]
+-    outputs = [ "{{bundle_contents_dir}}/Libraries/{{source_file_part}}" ]
+-    public_deps = [ "//ui/gl:swiftshader_vk_library_copy" ]
++  # Add the SwiftShader .dylibs only when the software renderer is enabled.
++  if (enable_swiftshader) {
++    bundle_data("content_shell_swiftshader_binaries") {
++      sources = [
++        "$root_out_dir/vk_intermediates/libvk_swiftshader.dylib",
++        "$root_out_dir/vk_intermediates/vk_swiftshader_icd.json",
++      ]
++      outputs = [ "{{bundle_contents_dir}}/Libraries/{{source_file_part}}" ]
++      public_deps = [ "//ui/gl:swiftshader_vk_library_copy" ]
++    }
+   }
+ 
+   # Add the Vulkan loader .dylib in the Libraries directory of the Framework.
